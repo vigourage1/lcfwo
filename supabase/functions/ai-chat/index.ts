@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     const losingTrades = trades?.filter(trade => trade.profit_loss < 0).length || 0;
     const winRate = trades?.length ? (winningTrades / trades.length) * 100 : 0;
 
-    const systemPrompt = `You are an AI trading assistant for Laxmi Chit Fund's trading analytics platform. 
+    const systemPrompt = `You are Sydney, an AI trading assistant for Laxmi Chit Fund's trading analytics platform. You are helpful, friendly, and knowledgeable about trading.
 
 User's Trading Data Summary:
 - Total Sessions: ${tradingContext.totalSessions}
@@ -95,40 +95,57 @@ User's Trading Data Summary:
 Recent Sessions: ${JSON.stringify(sessions?.slice(0, 5), null, 2)}
 Recent Trades: ${JSON.stringify(trades?.slice(0, 10), null, 2)}
 
-You can analyze their trading performance, provide insights, answer questions about specific trades or sessions, and offer psychological feedback on their trading patterns.
+You can:
+1. Analyze their trading performance and provide insights
+2. Answer questions about specific trades or sessions
+3. Provide psychological feedback on trading patterns
+4. Chat freely about anything (jokes, general questions, etc.)
+5. Help with trading education and tips
+6. Detect risky behavior patterns
 
-Be helpful, insightful, and provide actionable advice. Format your responses clearly and use specific data from their trading history when relevant.
+Be conversational, helpful, and provide actionable advice. Format your responses clearly and use specific data from their trading history when relevant.
 
 Current date: ${new Date().toLocaleDateString()}`;
 
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Use Gemini API instead of OpenAI
+    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'x-goog-api-key': 'AIzaSyDQVkAyAqPuonnplLxqEhhGyW_FqjteaVw',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: message }
+        contents: [
+          {
+            parts: [
+              {
+                text: `${systemPrompt}\n\nUser message: ${message}`
+              }
+            ]
+          }
         ],
-        max_tokens: 1000,
-        temperature: 0.7,
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1000,
+        }
       }),
     });
 
-    if (!openAIResponse.ok) {
-      throw new Error('OpenAI API request failed');
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error('Gemini API error:', errorText);
+      throw new Error('Gemini API request failed');
     }
 
-    const aiData = await openAIResponse.json();
-    const aiMessage = aiData.choices[0]?.message?.content || 'Sorry, I could not process your request.';
+    const aiData = await geminiResponse.json();
+    const aiMessage = aiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not process your request.';
 
     return new Response(
       JSON.stringify({ 
         message: aiMessage,
-        usage: aiData.usage 
+        usage: aiData.usageMetadata 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

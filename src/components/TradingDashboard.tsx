@@ -26,6 +26,7 @@ import TradesList from './Dashboard/TradesList';
 import EnhancedPerformanceChart from './Dashboard/EnhancedPerformanceChart';
 import ChatInterface from './AI/ChatInterface';
 import SessionSummaryModal from './Dashboard/SessionSummaryModal';
+import SydneyGreeting from './Dashboard/SydneyGreeting';
 import toast from 'react-hot-toast';
 
 const TradingDashboard: React.FC = () => {
@@ -191,6 +192,14 @@ const TradingDashboard: React.FC = () => {
     }
   };
 
+  const handleSessionSwitch = (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (session) {
+      setCurrentSession(session);
+      toast.success(`Switched to "${session.name}" session`);
+    }
+  };
+
   const handleExportJSON = () => {
     if (!currentSession) return;
     exportToJSON(currentSession, trades, stats);
@@ -249,6 +258,9 @@ const TradingDashboard: React.FC = () => {
     }
   };
 
+  // Extract user name from email (before @)
+  const userName = user?.email?.split('@')[0] || undefined;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -274,7 +286,7 @@ const TradingDashboard: React.FC = () => {
             </div>
             
             <div className="flex items-center space-x-4">
-              <span className="text-slate-300">Welcome, {user?.email}</span>
+              <span className="text-slate-300">Welcome, {userName || user?.email}</span>
               <button
                 onClick={handleSignOut}
                 className="flex items-center px-4 py-2 text-slate-300 hover:text-white transition-colors"
@@ -288,6 +300,9 @@ const TradingDashboard: React.FC = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Sydney Greeting */}
+        <SydneyGreeting userName={userName} />
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
@@ -370,10 +385,10 @@ const TradingDashboard: React.FC = () => {
             {/* AI Summary */}
             {currentSession && (
               <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                <h3 className="text-lg font-semibold text-white mb-4">AI Insights</h3>
+                <h3 className="text-lg font-semibold text-white mb-4">Sydney Insights</h3>
                 <button
                   onClick={() => setShowSummaryModal(true)}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
+                  className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
                   Generate Session Summary
@@ -491,7 +506,10 @@ const TradingDashboard: React.FC = () => {
       </div>
 
       {/* AI Chat Interface */}
-      <ChatInterface currentSessionId={currentSession?.id} />
+      <ChatInterface 
+        currentSessionId={currentSession?.id} 
+        onSessionSwitch={handleSessionSwitch}
+      />
 
       {/* Session Summary Modal */}
       {currentSession && (

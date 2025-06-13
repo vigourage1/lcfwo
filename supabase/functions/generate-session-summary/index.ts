@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     const totalMargin = trades?.reduce((sum, trade) => sum + trade.margin, 0) || 0;
     const avgROI = totalTrades ? trades.reduce((sum, trade) => sum + trade.roi, 0) / totalTrades : 0;
 
-    const systemPrompt = `You are an AI trading analyst. Generate a comprehensive summary for this trading session.
+    const systemPrompt = `You are Sydney, an AI trading analyst. Generate a comprehensive summary for this trading session.
 
 Session Details:
 - Name: ${session.name}
@@ -83,35 +83,47 @@ Please provide:
 4. Psychological observations about trading behavior
 5. Specific recommendations for future sessions
 
-Keep the summary professional, actionable, and under 500 words.`;
+Keep the summary professional, actionable, and under 500 words. Write in a friendly, helpful tone as Sydney.`;
 
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Use Gemini API instead of OpenAI
+    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'x-goog-api-key': 'AIzaSyDQVkAyAqPuonnplLxqEhhGyW_FqjteaVw',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt }
+        contents: [
+          {
+            parts: [
+              {
+                text: systemPrompt
+              }
+            ]
+          }
         ],
-        max_tokens: 800,
-        temperature: 0.7,
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 800,
+        }
       }),
     });
 
-    if (!openAIResponse.ok) {
-      throw new Error('OpenAI API request failed');
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error('Gemini API error:', errorText);
+      throw new Error('Gemini API request failed');
     }
 
-    const aiData = await openAIResponse.json();
-    const summary = aiData.choices[0]?.message?.content || 'Unable to generate summary.';
+    const aiData = await geminiResponse.json();
+    const summary = aiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Unable to generate summary.';
 
     return new Response(
       JSON.stringify({ 
         summary,
-        usage: aiData.usage 
+        usage: aiData.usageMetadata 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
